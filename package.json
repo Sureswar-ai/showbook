@@ -1,0 +1,29 @@
+{
+  "name": "showbook",
+  "version": "0.1.0",
+  "private": true,
+  "description": "BookMyShow replica - demo build (no paid services)",
+  "scripts": {
+    "dev": "turbo run dev --parallel",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "test:e2e": "pnpm --filter web test:e2e",
+    "db:generate": "pnpm --filter @showbook/db generate",
+    "db:migrate": "pnpm --filter @showbook/db migrate",
+    "db:seed": "pnpm --filter @showbook/db seed",
+    "db:reset": "pnpm --filter @showbook/db reset",
+    "clean": "turbo run clean && rimraf node_modules"
+  },
+  "devDependencies": {
+    "turbo": "^2.0.6",
+    "typescript": "^5.5.3",
+    "rimraf": "^5.0.7",
+    "prettier": "^3.3.2"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "packageManager": "pnpm@9.4.0"
+}

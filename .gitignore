@@ -1,0 +1,36 @@
+node_modules
+.pnpm-store
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# build outputs
+.next
+dist
+out
+build
+.turbo
+
+# logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# os
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/*
+!.vscode/extensions.json
+.idea
+
+# testing
+coverage
+playwright-report
+test-results
+
+# prisma
+packages/db/prisma/*.db
+packages/db/prisma/*.db-journal

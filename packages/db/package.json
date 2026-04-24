@@ -1,0 +1,31 @@
+{
+  "name": "@showbook/db",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "generate": "prisma generate",
+    "migrate": "prisma migrate deploy",
+    "migrate:dev": "prisma migrate dev",
+    "seed": "tsx prisma/seed.ts",
+    "reset": "prisma migrate reset --force && tsx prisma/seed.ts",
+    "studio": "prisma studio",
+    "lint": "echo 'no lint'",
+    "clean": "rimraf dist .turbo node_modules/.prisma"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.17.0"
+  },
+  "devDependencies": {
+    "@showbook/types": "workspace:*",
+    "prisma": "^5.17.0",
+    "tsx": "^4.16.0",
+    "typescript": "^5.5.3",
+    "rimraf": "^5.0.7",
+    "@types/node": "^20.14.10"
+  }
+}

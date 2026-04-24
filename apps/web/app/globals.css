@@ -1,0 +1,47 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #ffffff;
+  --fg: #0a0a0a;
+  --muted: #6b7280;
+  --border: #e5e7eb;
+  --card: #ffffff;
+}
+
+.dark {
+  --bg: #0a0a0a;
+  --fg: #f5f5f5;
+  --muted: #9ca3af;
+  --border: #1f2937;
+  --card: #111111;
+}
+
+html, body {
+  background: var(--bg);
+  color: var(--fg);
+}
+
+body {
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+}
+
+/* Hide number input spinners */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+input[type="number"] { -moz-appearance: textfield; }
+
+/* Nicer focus ring */
+*:focus-visible {
+  outline: 2px solid theme("colors.brand.DEFAULT");
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Utility: horizontal scroll with invisible scrollbar */
+.scroll-row {
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.scroll-row::-webkit-scrollbar { display: none; }

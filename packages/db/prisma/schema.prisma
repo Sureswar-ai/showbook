@@ -1,0 +1,494 @@
+// ============================================================
+// ShowBook Prisma schema (SQLite — zero-install demo build)
+// Arrays are stored as JSON. Timestamps are native DateTime.
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ---------- Users / Cities ----------------------------------
+
+model City {
+  id           String  @id @default(uuid())
+  name         String
+  slug         String  @unique
+  state        String?
+  latitude     Float?
+  longitude    Float?
+  isTop        Boolean @default(false) @map("is_top")
+  displayOrder Int?    @map("display_order")
+
+  users    User[]
+  theaters Theater[]
+
+  @@map("cities")
+}
+
+model User {
+  id            String   @id @default(uuid())
+  phone         String   @unique
+  email         String?  @unique
+  name          String?
+  passwordHash  String?  @map("password_hash")
+  cityId        String?  @map("city_id")
+  role          String   @default("USER")
+  emailVerified Boolean  @default(false) @map("email_verified")
+  phoneVerified Boolean  @default(false) @map("phone_verified")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  city          City?          @relation(fields: [cityId], references: [id])
+  theaters      Theater[]
+  events        Event[]
+  bookings      Booking[]
+  reviews       Review[]
+  notifications Notification[]
+  otpRequests   OtpRequest[]
+  refreshTokens RefreshToken[]
+  userOffers    UserOffer[]
+
+  @@index([phone])
+  @@map("users")
+}
+
+model OtpRequest {
+  id         String    @id @default(uuid())
+  userId     String?   @map("user_id")
+  phone      String
+  otp        String
+  expiresAt  DateTime  @map("expires_at")
+  consumedAt DateTime? @map("consumed_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  user       User?     @relation(fields: [userId], references: [id])
+
+  @@index([phone, createdAt])
+  @@map("otp_requests")
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id")
+  tokenHash String    @unique @map("token_hash")
+  expiresAt DateTime  @map("expires_at")
+  revokedAt DateTime? @map("revoked_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+// ---------- Movies ------------------------------------------
+
+model Movie {
+  id             String   @id @default(uuid())
+  title          String
+  originalTitle  String?  @map("original_title")
+  slug           String   @unique
+  synopsis       String
+  runtimeMinutes Int      @map("runtime_minutes")
+  certificate    String
+  releaseDate    DateTime @map("release_date")
+  /// JSON-encoded string[] of language names
+  languages      String
+  /// JSON-encoded string[] of format names
+  formats        String
+  /// JSON-encoded string[] of genre names
+  genres         String
+  posterUrl      String   @map("poster_url")
+  backdropUrl    String   @map("backdrop_url")
+  trailerUrl     String?  @map("trailer_url")
+  imdbRating     Float?   @map("imdb_rating")
+  userRating     Float?   @map("user_rating")
+  status         String   @default("UPCOMING")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  castCrew MovieCastCrew[]
+  shows    Show[]
+  reviews  Review[]
+
+  @@index([status])
+  @@map("movies")
+}
+
+model MovieCastCrew {
+  id             String  @id @default(uuid())
+  movieId        String  @map("movie_id")
+  personName     String  @map("person_name")
+  personImageUrl String? @map("person_image_url")
+  role           String
+  characterName  String? @map("character_name")
+  displayOrder   Int     @map("display_order")
+  movie          Movie   @relation(fields: [movieId], references: [id], onDelete: Cascade)
+
+  @@index([movieId, displayOrder])
+  @@map("movie_cast_crew")
+}
+
+// ---------- Theaters / Screens / Seats ----------------------
+
+model Theater {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
+  chain     String?
+  cityId    String   @map("city_id")
+  address   String
+  latitude  Float?
+  longitude Float?
+  /// JSON-encoded string[]
+  amenities String
+  phone     String?
+  partnerId String?  @map("partner_id")
+  city      City     @relation(fields: [cityId], references: [id])
+  partner   User?    @relation(fields: [partnerId], references: [id])
+
+  screens          Screen[]
+  eventOccurrences EventOccurrence[]
+
+  @@index([cityId])
+  @@map("theaters")
+}
+
+model Screen {
+  id         String @id @default(uuid())
+  theaterId  String @map("theater_id")
+  name       String
+  totalSeats Int    @map("total_seats")
+  /// JSON-encoded layout object { rows, cols, aisles }
+  layoutJson String @map("layout_json")
+  /// JSON-encoded string[]
+  formatsSupported String @map("formats_supported")
+
+  theater        Theater        @relation(fields: [theaterId], references: [id], onDelete: Cascade)
+  seatCategories SeatCategory[]
+  seats          Seat[]
+  shows          Show[]
+
+  @@map("screens")
+}
+
+model SeatCategory {
+  id           String        @id @default(uuid())
+  screenId     String        @map("screen_id")
+  name         String
+  colorHex     String        @map("color_hex")
+  displayOrder Int           @map("display_order")
+  screen       Screen        @relation(fields: [screenId], references: [id], onDelete: Cascade)
+  seats        Seat[]
+  pricing      ShowPricing[]
+
+  @@map("seat_categories")
+}
+
+model Seat {
+  id           String  @id @default(uuid())
+  screenId     String  @map("screen_id")
+  categoryId   String  @map("category_id")
+  rowLabel     String  @map("row_label")
+  seatNumber   Int     @map("seat_number")
+  isAccessible Boolean @default(false) @map("is_accessible")
+
+  screen       Screen        @relation(fields: [screenId], references: [id], onDelete: Cascade)
+  category     SeatCategory  @relation(fields: [categoryId], references: [id])
+  showSeats    ShowSeat[]
+  bookingSeats BookingSeat[]
+
+  @@unique([screenId, rowLabel, seatNumber])
+  @@map("seats")
+}
+
+// ---------- Shows -------------------------------------------
+
+model Show {
+  id        String   @id @default(uuid())
+  movieId   String   @map("movie_id")
+  screenId  String   @map("screen_id")
+  startTime DateTime @map("start_time")
+  endTime   DateTime @map("end_time")
+  language  String
+  format    String
+  status    String   @default("SCHEDULED")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  movie     Movie         @relation(fields: [movieId], references: [id])
+  screen    Screen        @relation(fields: [screenId], references: [id])
+  pricing   ShowPricing[]
+  showSeats ShowSeat[]
+  bookings  Booking[]
+
+  @@index([startTime])
+  @@index([movieId, screenId])
+  @@map("shows")
+}
+
+model ShowPricing {
+  id                  String       @id @default(uuid())
+  showId              String       @map("show_id")
+  categoryId          String       @map("category_id")
+  basePricePaise      Int          @map("base_price_paise")
+  convenienceFeePaise Int          @map("convenience_fee_paise")
+  show                Show         @relation(fields: [showId], references: [id], onDelete: Cascade)
+  category            SeatCategory @relation(fields: [categoryId], references: [id])
+
+  @@unique([showId, categoryId])
+  @@map("show_pricing")
+}
+
+model ShowSeat {
+  id             String    @id @default(uuid())
+  showId         String    @map("show_id")
+  seatId         String    @map("seat_id")
+  status         String    @default("AVAILABLE")
+  bookingId      String?   @map("booking_id")
+  lockedUntil    DateTime? @map("locked_until")
+  lockedByUserId String?   @map("locked_by_user_id")
+  show           Show      @relation(fields: [showId], references: [id], onDelete: Cascade)
+  seat           Seat      @relation(fields: [seatId], references: [id])
+
+  @@unique([showId, seatId])
+  @@index([showId])
+  @@index([status])
+  @@map("show_seats")
+}
+
+// ---------- Bookings / Payments -----------------------------
+
+model Booking {
+  id                  String    @id @default(uuid())
+  bookingNumber       String    @unique @map("booking_number")
+  userId              String    @map("user_id")
+  showId              String    @map("show_id")
+  status              String    @default("PENDING")
+  subtotalPaise       Int       @map("subtotal_paise")
+  convenienceFeePaise Int       @map("convenience_fee_paise")
+  gstPaise            Int       @map("gst_paise")
+  discountPaise       Int       @default(0) @map("discount_paise")
+  totalPaise          Int       @map("total_paise")
+  offerCode           String?   @map("offer_code")
+  qrCodeData          String?   @map("qr_code_data")
+  contactPhone        String?   @map("contact_phone")
+  contactEmail        String?   @map("contact_email")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  confirmedAt         DateTime? @map("confirmed_at")
+  cancelledAt         DateTime? @map("cancelled_at")
+  lockExpiresAt       DateTime? @map("lock_expires_at")
+
+  user     User            @relation(fields: [userId], references: [id])
+  show     Show            @relation(fields: [showId], references: [id])
+  seats    BookingSeat[]
+  fnb      BookingFnb[]
+  payments Payment[]
+  refunds  Refund[]
+  reviews  Review[]
+  intents  PaymentIntent[]
+
+  @@index([userId, createdAt])
+  @@index([showId])
+  @@map("bookings")
+}
+
+model BookingSeat {
+  id         String  @id @default(uuid())
+  bookingId  String  @map("booking_id")
+  seatId     String  @map("seat_id")
+  pricePaise Int     @map("price_paise")
+  booking    Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  seat       Seat    @relation(fields: [seatId], references: [id])
+
+  @@map("booking_seats")
+}
+
+model FnbItem {
+  id           String       @id @default(uuid())
+  name         String
+  description  String
+  category     String
+  pricePaise   Int          @map("price_paise")
+  imageUrl     String       @map("image_url")
+  available    Boolean      @default(true)
+  displayOrder Int          @default(0) @map("display_order")
+  bookingFnb   BookingFnb[]
+
+  @@map("fnb_items")
+}
+
+model BookingFnb {
+  id         String  @id @default(uuid())
+  bookingId  String  @map("booking_id")
+  itemId     String  @map("item_id")
+  quantity   Int
+  pricePaise Int     @map("price_paise")
+  booking    Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  item       FnbItem @relation(fields: [itemId], references: [id])
+
+  @@map("booking_fnb")
+}
+
+model Payment {
+  id               String    @id @default(uuid())
+  bookingId        String    @map("booking_id")
+  gateway          String
+  gatewayOrderId   String?   @map("gateway_order_id")
+  gatewayPaymentId String?   @map("gateway_payment_id")
+  amountPaise      Int       @map("amount_paise")
+  currency         String    @default("INR")
+  status           String
+  method           String?
+  /// JSON-encoded gateway raw response
+  rawResponse      String?   @map("raw_response")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  paidAt           DateTime? @map("paid_at")
+  booking          Booking   @relation(fields: [bookingId], references: [id])
+
+  @@index([bookingId])
+  @@map("payments")
+}
+
+model PaymentIntent {
+  id          String    @id @default(uuid())
+  orderId     String    @unique @map("order_id")
+  bookingId   String?   @map("booking_id")
+  amountPaise Int       @map("amount_paise")
+  currency    String    @default("INR")
+  status      String    @default("CREATED")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  resolvedAt  DateTime? @map("resolved_at")
+  booking     Booking?  @relation(fields: [bookingId], references: [id])
+
+  @@map("payment_intents")
+}
+
+model Refund {
+  id              String   @id @default(uuid())
+  bookingId       String   @map("booking_id")
+  paymentId       String?  @map("payment_id")
+  amountPaise     Int      @map("amount_paise")
+  gatewayRefundId String?  @map("gateway_refund_id")
+  status          String
+  reason          String?
+  createdAt       DateTime @default(now()) @map("created_at")
+  booking         Booking  @relation(fields: [bookingId], references: [id])
+
+  @@map("refunds")
+}
+
+// ---------- Events ------------------------------------------
+
+model Event {
+  id             String   @id @default(uuid())
+  title          String
+  slug           String   @unique
+  eventType      String   @map("event_type")
+  description    String
+  durationHours  Float?   @map("duration_hours")
+  ageRestriction String?  @map("age_restriction")
+  bannerUrl      String   @map("banner_url")
+  organizerId    String?  @map("organizer_id")
+  status         String   @default("DRAFT")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  organizer   User?             @relation(fields: [organizerId], references: [id])
+  occurrences EventOccurrence[]
+  reviews     Review[]
+
+  @@index([eventType, status])
+  @@map("events")
+}
+
+model EventOccurrence {
+  id          String    @id @default(uuid())
+  eventId     String    @map("event_id")
+  venueId     String    @map("venue_id")
+  startTime   DateTime  @map("start_time")
+  endTime     DateTime? @map("end_time")
+  seatingType String    @map("seating_type")
+  /// JSON-encoded seating layout
+  layoutJson  String?   @map("layout_json")
+  event       Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  venue       Theater   @relation(fields: [venueId], references: [id])
+
+  @@map("event_occurrences")
+}
+
+// ---------- Reviews / Offers / Notifications ---------------
+
+model Review {
+  id           String   @id @default(uuid())
+  userId       String   @map("user_id")
+  movieId      String?  @map("movie_id")
+  eventId      String?  @map("event_id")
+  bookingId    String?  @map("booking_id")
+  rating       Float
+  text         String?
+  helpfulCount Int      @default(0) @map("helpful_count")
+  status       String   @default("APPROVED")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  user    User     @relation(fields: [userId], references: [id])
+  movie   Movie?   @relation(fields: [movieId], references: [id])
+  event   Event?   @relation(fields: [eventId], references: [id])
+  booking Booking? @relation(fields: [bookingId], references: [id])
+
+  @@index([movieId, status])
+  @@index([eventId, status])
+  @@map("reviews")
+}
+
+model Offer {
+  id               String   @id @default(uuid())
+  code             String   @unique
+  title            String
+  description      String
+  discountType     String   @map("discount_type")
+  discountValue    Int      @map("discount_value")
+  maxDiscountPaise Int?     @map("max_discount_paise")
+  minOrderPaise    Int      @default(0) @map("min_order_paise")
+  validFrom        DateTime @map("valid_from")
+  validTo          DateTime @map("valid_to")
+  totalLimit       Int?     @map("total_limit")
+  perUserLimit     Int      @default(1) @map("per_user_limit")
+  /// JSON-encoded cityId[]
+  applicableCities String   @default("[]") @map("applicable_cities")
+  /// JSON-encoded payment method code[]
+  applicablePaymentMethods String @default("[]") @map("applicable_payment_methods")
+  isActive   Boolean @default(true) @map("is_active")
+  userOffers UserOffer[]
+
+  @@map("offers")
+}
+
+model UserOffer {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  offerId   String   @map("offer_id")
+  bookingId String?  @map("booking_id")
+  usedAt    DateTime @default(now()) @map("used_at")
+  user      User     @relation(fields: [userId], references: [id])
+  offer     Offer    @relation(fields: [offerId], references: [id])
+
+  @@index([userId, offerId])
+  @@map("user_offers")
+}
+
+model Notification {
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id")
+  type      String
+  title     String
+  body      String
+  /// JSON-encoded arbitrary metadata
+  metadata  String?
+  readAt    DateTime? @map("read_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt])
+  @@map("notifications")
+}
